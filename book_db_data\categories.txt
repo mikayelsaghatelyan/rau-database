@@ -1,0 +1,20 @@
+Fantasy
+Fiction
+Non-Fiction
+Science Fiction
+Detective
+Horror
+Technical
+Biography
+Historical
+Drama
+Comedy
+Poetry
+Mystery
+Romance
+Thriller
+Adventure
+Self-Help
+Humor
+Philosophy
+Cookbook
