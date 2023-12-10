@@ -3,17 +3,21 @@ from sqlalchemy.orm import declarative_base
 import session as _session
 
 Base = declarative_base()
-create_flag = False
+create_flag = True
 
 
 class Book(Base):
     __tablename__ = 'book'
     book_id = Column(Integer, primary_key=True, autoincrement=True)
-    author_name = Column(String(50))
-    author_surname = Column(String(50))
+    title = Column(String(100))
+    isbn = Column(String(50))
     category = Column(String(50))
     publisher = Column(String(50))
-    title = Column(String(100))
+    author_name = Column(String(50))
+    author_surname = Column(String(50))
+
+    def to_dict(self):
+        return {column.name: getattr(self, column.name) for column in self.__table__.columns}
 
 
 class Patron(Base):
@@ -21,8 +25,13 @@ class Patron(Base):
     patron_id = Column(Integer, primary_key=True, autoincrement=True)
     patron_name = Column(String(50))
     patron_surname = Column(String(50))
+    phone_number = Column(String(50))
+    passport = Column(String(50))
     address = Column(String(100))
     departure = Column(Boolean)
+
+    def to_dict(self):
+        return {column.name: getattr(self, column.name) for column in self.__table__.columns}
 
 
 class Checkout(Base):
@@ -33,6 +42,9 @@ class Checkout(Base):
     checkout_date = Column(DateTime)
     return_date_expected = Column(DateTime)
     return_date_actual = Column(DateTime)
+
+    def to_dict(self):
+        return {column.name: getattr(self, column.name) for column in self.__table__.columns}
 
 
 if create_flag:
