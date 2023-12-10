@@ -1,8 +1,7 @@
 from fastapi import FastAPI, HTTPException, status
 from session import session as session_
 import models as models_
-from sqlalchemy import DateTime
-from datetime import datetime, date
+from datetime import datetime, timedelta
 from fastapi import Query
 
 app = FastAPI()
@@ -15,14 +14,14 @@ async def create_book(title_: str,
                       publisher_: str = "",
                       author_name_: str = "",
                       author_surname_: str = ""):
-    obj = models_.Book(title=title_,
-                       category=category_,
-                       publisher=publisher_,
-                       author_name=author_name_,
-                       author_surname=author_surname_)
-    session_.add(obj)
+    book = models_.Book(title=title_,
+                        category=category_,
+                        publisher=publisher_,
+                        author_name=author_name_,
+                        author_surname=author_surname_)
+    session_.add(book)
     session_.commit()
-    return f"Book created: {obj.book_id} - {obj.title}."
+    return f"Book successfully created. BookID: {book.book_id}, Title: {book.title}."
 
 
 @app.get("/get_book/{book_id}", tags=["book"])
@@ -30,14 +29,14 @@ async def get_book(book_id_: int):
     book = session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()
     if book is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Failed to get book by ID: Book not found.")
+                            detail="Failed to get book by ID. Book not found.")
     return book
 
 
 @app.get("/get_all_books", tags=["book"])
-async def get_all_books(skip: int = 0, limit: int = 100):
-    books_query = session_.query(models_.Book).offset(skip).limit(limit)
-    return books_query.all()
+async def get_all_books(skip: int = Query(0, ge=0), limit: int = Query(100)):
+    books = session_.query(models_.Book).offset(skip).limit(limit)
+    return books.all()
 
 
 @app.put("/update/{book_id}", tags=["book"])
@@ -47,34 +46,56 @@ async def update_book(book_id_: int,
                       new_publisher: str = "",
                       new_author_name: str = "",
                       new_author_surname: str = ""):
-    if (obj := session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()) is None:
+    if (book := session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Failed to update book: No book with such ID.")
+                            detail="Failed to update book. No book with such ID.")
     if new_title:
-        obj.title = new_title
+        book.title = new_title
     if new_category:
-        obj.category = new_category
+        book.category = new_category
     if new_publisher:
-        obj.publisher = new_publisher
+        book.publisher = new_publisher
     if new_author_name:
-        obj.author_name = new_author_name
+        book.author_name = new_author_name
     if new_author_surname:
-        obj.author_surname = new_author_surname
-    session_.add(obj)
+        book.author_surname = new_author_surname
+    session_.add(book)
     session_.commit()
-    return f"Successfully updated book with ID:{obj.book_id}."
+    return f"Successfully updated book. BookID: {book.book_id}."
 
 
 @app.delete("/delete/{book_id}", tags=["book"])
 async def delete_book(book_id_: int):
-    if (obj := session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()) is not None:
-        if session_.query(models_.Checkout).filter(models_.Checkout.book_id == book_id_).first() is None:
-            session_.delete(obj)
+    if session_.query(models_.Book).count() != 0:
+        if (book := session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()) is not None:
+            if session_.query(models_.Checkout).filter(models_.Checkout.book_id == book_id_).first() is None:
+                session_.delete(book)
+                session_.commit()
+                return f"Book successfully deleted: BookID: {book.book_id}, Title: {book.title}."
+            else:
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                     detail=f"ID: {book_id_} Book is checked out and cannot be deleted.")
+        else:
+            return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                 detail=f"ID: {book_id_} Failed to delete book. No book with such ID.")
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                         detail=f"Failed to delete book. No books in database.")
+
+
+@app.delete("/delete_all_books", tags=["book"])
+async def delete_all_books():
+    if session_.query(models_.Book).count() > 0:
+        if session_.query(models_.Checkout).count() == 0:
+            deleted_count = session_.query(models_.Book).count()
+            session_.query(models_.Book).delete()
             session_.commit()
-            return f"Book deleted: {obj.book_id} - {obj.title}."
-    else:
-        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                             detail=f"ID: {book_id_} Book is checked out and cannot be deleted.")
+            return f"All books successfully deleted. Deleted books count: {deleted_count}."
+        else:
+            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                 detail="Failed to delete all books. Some books "
+                                        "are checked out and cannot be deleted.")
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                         detail="No books found. Nothing to delete.")
 
 
 # patron CRUD
@@ -83,136 +104,165 @@ async def create_patron(patron_name_: str = "",
                         patron_surname_: str = "",
                         address_: str = "",
                         departure_: bool = "False"):
-    check_patron_id_first = session_.query(models_.actor).filter(models_.actor.id == patron_id).first()
-    if check_patron_id_first is not None:
-        check_patron_id_second = session_.query(models_.patron).filter(models_.patron.id == patron_id).first()
-        if check_patron_id_second is None:
-            object = models_.patron(id=patron_id, name=name, ampula=ampula, piesa=piesa, gender=gender)
-            session_.add(object)
-            session_.commit()
-        else:
-            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ID IN USE, CHANGE THE ID")
-        if name:
-            return f"patron added: {object.name}"
-        else:
-            return f"patron added: ID = {object.id}"
-    else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ID IN USE, CHANGE THE ID")
-
-
-@app.get("/get_patron", tags=["patron"])
-async def get_all_patrons(skip: int = Query(0, ge=0), limit: int = Query(100)):
-    patron_query = session_.query(models_.patron).offset(skip).limit(limit)
-    return patron_query.all()
-
-
-@app.put("/update_patron/{patron_id}", tags=["patron"])
-async def patron_update(
-        patron_id: int,
-        new_name: str = "",
-        new_ampula: str = "",
-        new_piesa: str = "",
-        new_gender: str = ""
-):
-    patron_object = session_.query(models_.patron).filter(models_.patron.id == patron_id).first()
-    if patron_object is None:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No Such ID")
-
-    if new_name:
-        patron_object.name = new_name
-    if new_ampula:
-        patron_object.ampula = new_ampula
-    if new_piesa != 0:
-        patron_object.piesa = new_piesa
-    if new_gender:
-        patron_object.gender = new_gender
-    session_.add(patron_object)
+    patron = models_.Book(patron_name=patron_name_,
+                          patron_surname=patron_surname_,
+                          address=address_,
+                          departure=departure_)
+    session_.add(patron)
     session_.commit()
-    return "patron successfully updated"
+    return (f"Patron successfully created: PatronID: {patron.book_id}, "
+            f"Name, Surname: {patron.patron_name} {patron.patron_surname}.")
+
+
+@app.get("/get_patron/{patron_id}", tags=["patron"])
+async def get_patron(patron_id_: int):
+    patron = session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first()
+    if patron is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Failed to get patron by ID: Patron not found.")
+    return patron
+
+
+@app.get("/get_all_patrons", tags=["patron"])
+async def get_all_patrons(skip: int = Query(0, ge=0), limit: int = Query(100)):
+    patrons = session_.query(models_.Patron).offset(skip).limit(limit)
+    return patrons.all()
+
+
+@app.put("/update/{patron_id}", tags=["patron"])
+async def update_book(patron_id_: int,
+                      new_patron_name: str,
+                      new_patron_surname: str = "",
+                      new_address: str = "",
+                      new_departure: bool = False):
+    if (patron := session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first()) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Failed to update patron. No patron with such ID.")
+    if new_patron_name:
+        patron.patron_name = new_patron_name
+    if new_patron_surname:
+        patron.patron_surname = new_patron_surname
+    if new_address:
+        patron.address = new_address
+    if new_departure is not None:
+        patron.departure = new_departure
+    session_.add(patron)
+    session_.commit()
+    return f"Patron successfully updated. PatronID: {patron.patron_id}."
 
 
 @app.delete("/delete_patron/{patron_id}", tags=["patron"])
-async def patron_delete(patron_id: int):
-    patron_object = session_.query(models_.patron).filter(models_.patron.id == patron_id).first()
-    if patron_object is not None:
-        session_.delete(patron_object)
-        session_.commit()
-        return f"patron deleted: {patron_object.id}"
+async def delete_patron(patron_id_: int):
+    if session_.query(models_.Patron).count() == 0:
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail=f"Failed to delete patron. No patrons in database.")
+    if (patron := session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first()) is not None:
+        if session_.query(models_.Checkout).filter(models_.Checkout.patron_id == patron_id_).first() is None:
+            session_.delete(patron)
+            session_.commit()
+            return f"Patron successfully deleted: {patron.book_id} - {patron.title}."
+        else:
+            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                 detail=f"ID: {patron_id_} Patron checked out book(s) and cannot be deleted.")
     else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No Such ID")
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail=f"ID: {patron_id_} Failed to delete patron. No patron with such ID.")
 
 
+@app.delete("/delete_all_patrons", tags=["patron"])
+async def delete_all_patrons():
+    if session_.query(models_.Patron).count() > 0:
+        if session_.query(models_.Checkout).count() == 0:
+            deleted_count = session_.query(models_.Patron).count()
+            session_.query(models_.Patron).delete()
+            session_.commit()
+            return f"All patrons successfully deleted. Deleted patrons count: {deleted_count}."
+        else:
+            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                 detail="Failed to delete all patrons. Some patrons "
+                                        "checked out books and cannot be deleted.")
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                         detail="No patrons found. Nothing to delete.")
 
 
 # checkout methods
 @app.post("/create_checkout", tags=["checkout"])
-async def create_checkout(start_patron: date = datetime.now().strftime("%Y-%m-%d"),
-                          stop_patron: date = datetime.now().strftime("%Y-%m-%d"),
-                          date_of: date = datetime.now().strftime("%Y-%m-%d"),
-                          group_number: int = 0, patron_type: str = "",
-                          director: str = ""):
-    if session_.query(models_.Book).filter(
-            models_.Book.id == checkout_id).first() is not None:  # if found id in actor.id
-        if session_.query(models_.Checkout).filter(
-                models_.Checkout.id == checkout_id).first() is None:  # if not found id in checkout.id
-            object = models_.Checkout(id=checkout_id, start_patron=start_patron, stop_patron=stop_patron,
-                                      patron_type=patron_type, group_number=group_number,
-                                      director=director, date_of=date_of)
-            session_.add(object)
+async def create_checkout(book_id_: int,
+                          patron_id_: int,
+                          checkout_date_: datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                          return_date_expected_: datetime = (datetime.now() + timedelta(weeks=3)).strftime("%Y-%m-%d"),
+                          return_date_actual_: datetime = (datetime.now() + timedelta(weeks=2)).strftime("%Y-%m-%d")):
+    if session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first() is not None:
+        if session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first() is not None:
+            checkout = models_.Checkout(patron_id=patron_id_,
+                                        checkout_date=checkout_date_,
+                                        return_date_expected=return_date_expected_,
+                                        return_date_actual=return_date_actual_)
+            session_.add(checkout)
             session_.commit()
+            return (f"Checkout successfully created. CheckoutID:{checkout.checkout_id}: "
+                    f"PatronID:{checkout.book_id} checked out BookID:{checkout.title}.")
         else:
-            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ID IN USE, CHANGE THE ID")
-        if patron_type:
-            return f"checkout added: {object.patron_type}"
-        else:
-            return f"checkout added: ID = {object.id}"
+            return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                 detail="Failed to create checkout. No patron with such ID.")
     else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No Such ID in actor")
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail="Failed to create checkout. No book with such ID.")
 
 
-@app.get("/get_checkout", tags=["checkout"])
-async def get_all_checkout(skip: int = Query(0, ge=0), limit: int = Query(100)):
-    checkout_query = session_.query(models_.Checkout).offset(skip).limit(limit)
-    return checkout_query.all()
+@app.get("/get_checkout/{checkout_id}", tags=["checkout"])
+async def get_checkout(checkout_id_: int):
+    checkout = session_.query(models_.Checkout).filter(models_.Checkout.checkout_id == checkout_id_).first()
+    if checkout is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Failed to get checkout by ID: Checkout not found.")
+    return checkout
 
 
-@app.put("/update_checkout/{checkout_id}", tags=["checkout"])
-async def checkout_update(
-        checkout_id: int,
-        new_group_number: int = 0,
-        new_start_patron: date = datetime.now().strftime("%Y-%m-%d"),
-        new_stop_patron: date = datetime.now().strftime("%Y-%m-%d"),
-        new_patron_type: str = "",
-        new_director: str = "",
-        new_date_of: date = datetime.now().strftime("%Y-%m-%d")
-):
-    checkout_object = session_.query(models_.Checkout).filter(models_.Checkout.id == checkout_id).first()
-    if checkout_object is None:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No Such ID")
+@app.get("/get_all_checkouts", tags=["checkout"])
+async def get_all_checkouts(skip: int = Query(0, ge=0), limit: int = Query(100)):
+    checkouts = session_.query(models_.Checkout).offset(skip).limit(limit)
+    return checkouts.all()
 
-    if new_group_number:
-        checkout_object.group_number = new_group_number
-    if new_start_patron:
-        checkout_object.stop_patron = new_start_patron
-    if new_stop_patron != 0:
-        checkout_object.stop_patron = new_stop_patron
-    if new_patron_type:
-        checkout_object.patron_type = new_patron_type
-    if new_director:
-        checkout_object.director = new_director
-    if new_date_of:
-        checkout_object.date_of = new_date_of
-    session_.add(checkout_object)
+
+@app.put("/update/{checkout_id}", tags=["checkout"])
+async def update_checkout(checkout_id_: int,
+                          new_book_id: int = 0,
+                          new_patron_id: int = 0,
+                          new_checkout_date: datetime = None,
+                          new_return_date_expected: datetime = None,
+                          new_return_date_actual: datetime = None):
+    if (checkout := session_.query(models_.Checkout).filter(
+            models_.Checkout.checkout_id == checkout_id_).first()) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Failed to update checkout. No checkout with such ID.")
+    if new_book_id:
+        checkout.book_id = new_book_id
+    if new_patron_id:
+        checkout.patron_id = new_patron_id
+    if new_checkout_date:
+        checkout.checkout_date = new_checkout_date
+    if new_return_date_expected:
+        checkout.return_date_expected = new_return_date_expected
+    if new_return_date_actual:
+        checkout.return_date_actual = new_return_date_actual
+    session_.add(checkout)
     session_.commit()
-    return "checkout successfully updated"
+    return f"Checkout successfully updated. CheckoutID: {checkout.checkout_id}."
 
 
 @app.delete("/delete_checkout/{checkout_id}", tags=["checkout"])
-async def checkout_delete(checkout_id: int):
-    checkout_object = session_.query(models_.Checkout).filter(models_.Checkout.id == checkout_id).first()
-    if checkout_object is not None:
-        session_.delete(checkout_object)
-        session_.commit()
-        return f"checkout deleted: {checkout_object.id}"
-    else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No Such ID")
+async def delete_checkout(checkout_id_: int):
+    if session_.query(models_.Checkout).count() != 0:
+        if (checkout := session_.query(models_.Checkout).filter(
+                models_.Checkout.checkout_id == checkout_id_).first()) is not None:
+            session_.delete(checkout)
+            session_.commit()
+            return (f"Checkout successfully deleted. CheckoutID:{checkout.checkout_id}: "
+                    f"PatronID:{checkout.book_id} checked out BookID:{checkout.title}.")
+        else:
+            return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                 detail=f"ID: {checkout.checkout_id} "
+                                        f"Failed to delete checkout. No checkout with such ID.")
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                         detail=f"Failed to delete checkout. No checkouts in database.")
