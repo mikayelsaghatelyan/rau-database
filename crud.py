@@ -266,3 +266,16 @@ async def delete_checkout(checkout_id_: int):
                                         f"Failed to delete checkout. No checkout with such ID.")
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                          detail=f"Failed to delete checkout. No checkouts in database.")
+
+
+@app.delete("/delete_all_checkouts", tags=["checkout"])
+async def delete_all_checkouts():
+    if session_.query(models_.Checkout).count() > 0:
+        deleted_count = session_.query(models_.Checkout).count()
+        session_.query(models_.Checkout).delete()
+        session_.commit()
+        return f"All checkouts successfully deleted. Deleted checkouts count: {deleted_count}."
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                         detail="No checkouts found. Nothing to delete.")
+
+
