@@ -3,7 +3,7 @@ from sqlalchemy.orm import declarative_base
 import session as _session
 
 Base = declarative_base()
-create_flag = True
+create_flag = False
 
 
 class Book(Base):

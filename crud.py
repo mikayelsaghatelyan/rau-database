@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, status
 from session import session as session_
 import models as models_
 from datetime import datetime, timedelta
+import random
+import asyncio
 from fastapi import Query
 import data as data_
 
@@ -206,8 +208,10 @@ async def delete_all_patrons():
 async def create_checkout(book_id_: int,
                           patron_id_: int,
                           checkout_date_: datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                          return_date_expected_: datetime = (datetime.now() + timedelta(weeks=3)).strftime("%Y-%m-%d"),
-                          return_date_actual_: datetime = (datetime.now() + timedelta(weeks=2)).strftime("%Y-%m-%d")):
+                          return_date_expected_:
+                          datetime = (datetime.now() + timedelta(weeks=3)).strftime("%Y-%m-%d %H:%M:%S"),
+                          return_date_actual_:
+                          datetime = (datetime.now() + timedelta(weeks=2)).strftime("%Y-%m-%d% H:%M:%S")):
     if session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first() is not None:
         if session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first() is not None:
             checkout = models_.Checkout(book_id=book_id_,
@@ -299,4 +303,41 @@ async def delete_all_checkouts():
 @app.post("/generate_books", tags=["book"])
 async def generate_books(number: int):
     for _ in range(number):
-        create_book()
+        book = models_.Book(title=data_.get_random_title(),
+                            isbn=data_.get_random_isbn(),
+                            category=data_.get_random_category(),
+                            publisher=data_.get_random_publisher(),
+                            author_name=data_.get_random_name(),
+                            author_surname=data_.get_random_surname())
+        session_.add(book)
+        session_.commit()
+    return f"Books successfully generated. Generated books count: {number}"
+
+
+@app.post("/generate_patrons", tags=["patron"])
+async def generate_patrons(number: int):
+    for _ in range(number):
+        patron = models_.Patron(patron_name=data_.get_random_name(),
+                                patron_surname=data_.get_random_surname(),
+                                phone_number=data_.get_random_phone_number(),
+                                passport=data_.get_random_passport(),
+                                address=data_.get_random_address(),
+                                departure=data_.get_random_departure())
+        session_.add(patron)
+        session_.commit()
+    return f"Patrons successfully generated. Generated patrons count: {number}"
+
+
+@app.post("/generate_checkouts", tags=["checkout"])
+async def generate_checkouts(number: int):
+    book_ids = [book.book_id for book in session_.query(models_.Book).all()]
+    patron_ids = [patron.patron_id for patron in session_.query(models_.Patron).all()]
+    for _ in range(number):
+        patron = models_.Checkout(book_id=random.choice(book_ids),
+                                  patron_id=random.choice(patron_ids),
+                                  checkout_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                  return_date_expected=(datetime.now() + timedelta(weeks=3)).strftime("%Y-%m-%d"),
+                                  return_date_actual=(datetime.now() + timedelta(weeks=2)).strftime("%Y-%m-%d"))
+        session_.add(patron)
+        session_.commit()
+    return f"Checkouts successfully generated. Generated checkouts count: {number}"

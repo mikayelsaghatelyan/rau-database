@@ -21,6 +21,3 @@ async def invoke(async_func, *args, **kwargs):
 # print([obj.to_dict() for obj in asyncio.run(invoke(crud_.get_all_patrons))])
 # print(asyncio.run(invoke(crud_.get_checkout, 3)).to_dict())
 # print([obj.to_dict() for obj in asyncio.run(invoke(crud_.get_all_checkouts))])
-
-
-
