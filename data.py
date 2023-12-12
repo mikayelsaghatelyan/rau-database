@@ -1,6 +1,9 @@
 import os
 import random
 
+from api import HTTPException
+from starlette import status
+
 
 def read_data(file_name):
     with open(os.path.join("tables_data", file_name), "r") as file:
@@ -42,7 +45,8 @@ def get_random_publisher():
 
 def get_random_address():
     address = (f"{random.randint(1, 300)} {random.choice(data['streets'])} St, "
-               f"Apt. {random.randint(1, 200)}, {random.randint(100000, 999999)}")
+               f"Apt. {random.randint(1, 200)}, {random.randint(100000, 999999)}, "
+               f"{random.choice(data['towns'])}, {random.choice(data['states'])}")
     return address
 
 
@@ -62,6 +66,6 @@ def get_random_passport():
 
 
 file_names = ["categories.txt", "publishers.txt", "names.txt", "streets.txt",
-              "surnames.txt", "titles.txt", "towns.txt", "us_states.txt"]
+              "surnames.txt", "titles.txt", "towns.txt", "states.txt"]
 
 data = {file_name[:-4]: read_data(file_name) for file_name in file_names}
