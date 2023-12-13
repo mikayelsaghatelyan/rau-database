@@ -63,6 +63,18 @@ def get_random_language():
     return random.choice(data["languages"])
 
 
+def get_random_quantity():
+    return random.randint(0, 100)
+
+
+def get_random_renewal_amount():
+    return random.randint(0, 10)
+
+
+def get_random_fee():
+    return random.randint(1, 10) * 10
+
+
 def get_random_passport():
     letters = random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=2)
     numbers = ''.join(random.choices('0123456789', k=8))

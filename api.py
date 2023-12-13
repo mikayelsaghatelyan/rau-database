@@ -18,13 +18,15 @@ async def create_book(title_: str = "",
                       category_: str = "",
                       publisher_: str = "",
                       author_name_: str = "",
-                      author_surname_: str = ""):
+                      author_surname_: str = "",
+                      quantity_: int = 1):
     book = models_.Book(title=title_,
                         isbn=isbn_,
                         category=category_,
                         publisher=publisher_,
                         author_name=author_name_,
-                        author_surname=author_surname_)
+                        author_surname=author_surname_,
+                        quantity=quantity_)
     session_.add(book)
     session_.commit()
     return f"Book successfully created. BookID: {book.book_id}, Title: {book.title}."
@@ -52,7 +54,8 @@ async def update_book(book_id_: int,
                       new_category: str = "",
                       new_publisher: str = "",
                       new_author_name: str = "",
-                      new_author_surname: str = ""):
+                      new_author_surname: str = "",
+                      new_quantity: str = None):
     if (book := session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="Failed to update book. No book with such ID.")
@@ -68,6 +71,8 @@ async def update_book(book_id_: int,
         book.author_name = new_author_name
     if new_author_surname:
         book.author_surname = new_author_surname
+    if new_quantity:
+        book.quantity = new_quantity
     session_.add(book)
     session_.commit()
     return f"Successfully updated book. BookID: {book.book_id}."
@@ -301,6 +306,7 @@ async def delete_all_checkouts():
                         detail="No checkouts found. Nothing to delete.")
 
 
+# Methods for creating lines with random pre-generated values
 @app.post("/generate_books", tags=["book"])
 async def generate_books(number: int):
     for _ in range(number):
@@ -309,7 +315,8 @@ async def generate_books(number: int):
                             category=data_.get_random_category(),
                             publisher=data_.get_random_publisher(),
                             author_name=data_.get_random_name(),
-                            author_surname=data_.get_random_surname())
+                            author_surname=data_.get_random_surname(),
+                            quantity=data_.get_random_quantity())
         session_.add(book)
         session_.commit()
     return f"Books successfully generated. Generated books count: {number}"
@@ -344,4 +351,71 @@ async def generate_checkouts(number: int):
     return f"Checkouts successfully generated. Generated checkouts count: {number}"
 
 
+# Methods for inserting and reading JSON column (misc_data) values of the tables
+@app.post("/insert_json_book", tags=["book"])
+async def insert_json_data_book(book_id_: int, json_data: dict):
+    book = session_.query(models_.Book).filter(models_.Book.book_id_ == book_id_).first()
+    if book is not None:
+        book.misc_data = json_data
+        session_.add(book)
+        session_.commit()
+        return f"Book miscellaneous data successfully inserted. BookID: {book.book_id}, Title: {book.title}."
+    else:
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail="Failed to insert miscellaneous data into book. No book with such ID.")
 
+
+@app.get("/get_json_book/{book_id}", tags=["book"])
+async def get_json_data_book(book_id_: int):
+    book = session_.query(models_.Book).filter(models_.Book.book_id_ == book_id_).first()
+    if book is not None:
+        return book.misc_data
+    else:
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail="Failed to get miscellaneous data into book. No book with such ID.")
+
+
+@app.post("/insert_json_patron", tags=["patron"])
+async def insert_json_data_patron(patron_id_: int, json_data: dict):
+    patron = session_.query(models_.Patron).filter(models_.Patron.patron_id_ == patron_id_).first()
+    if patron is not None:
+        patron.misc_data = json_data
+        session_.add(patron)
+        session_.commit()
+        return f"patron miscellaneous data successfully inserted. patronID: {patron.patron_id}, Title: {patron.title}."
+    else:
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail="Failed to insert miscellaneous data into patron. No patron with such ID.")
+
+
+@app.get("/get_json_patron/{patron_id}", tags=["patron"])
+async def get_json_data_patron(patron_id_: int):
+    patron = session_.query(models_.Patron).filter(models_.Patron.patron_id_ == patron_id_).first()
+    if patron is not None:
+        return patron.misc_data
+    else:
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail="Failed to get miscellaneous data into patron. No patron with such ID.")
+
+
+@app.post("/insert_json_checkout", tags=["checkout"])
+async def insert_json_data_checkout(checkout_id_: int, json_data: dict):
+    checkout = session_.query(models_.Checkout).filter(models_.Checkout.checkout_id_ == checkout_id_).first()
+    if checkout is not None:
+        checkout.misc_data = json_data
+        session_.add(checkout)
+        session_.commit()
+        return f"checkout miscellaneous data successfully inserted. checkoutID: {checkout.checkout_id}, Title: {checkout.title}."
+    else:
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail="Failed to insert miscellaneous data into checkout. No checkout with such ID.")
+
+
+@app.get("/get_json_checkout/{checkout_id}", tags=["checkout"])
+async def get_json_data_checkout(checkout_id_: int):
+    checkout = session_.query(models_.Checkout).filter(models_.Checkout.checkout_id_ == checkout_id_).first()
+    if checkout is not None:
+        return checkout.misc_data
+    else:
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail="Failed to get miscellaneous data into checkout. No checkout with such ID.")
