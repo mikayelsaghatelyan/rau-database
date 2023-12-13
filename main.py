@@ -8,22 +8,13 @@ async def invoke(async_func, *args, **kwargs):
     res = await async_func(*args, **kwargs)
     return res
 
-
 # book - title, category, publisher, name, surname
+# book.misc_data (JSON) - published_date, language, edition, pages
 # patron - name, surname, address, departure
+# patron.misc_data (JSON) - join_date, expiration_date, favourite_category
 # checkout - bookID, actorID, checkout_date, return_date_expected, return_date_actual
+# checkout.misc_data (JSON) - checkout_fee, renewal_amount, book_condition
 
-# print(asyncio.run(invoke(api_.create_book, "fi", "1212", "fa", "fo", "rero", "boo")))
-# print(asyncio.run(invoke(api_.create_patron, "paul", "paulownia", "0988888", "AK0202", "11 koko st", False)))
-# print(asyncio.run(invoke(api_.create_checkout, random.randint(1, 9), random.randint(1, 5))))
-# print(asyncio.run(invoke(api_.get_book, 1)).to_dict())
-# print([obj.to_dict() for obj in asyncio.run(invoke(api_.get_all_books))])
-# print(asyncio.run(invoke(api_.get_patron, 1)).to_dict())
-# print([obj.to_dict() for obj in asyncio.run(invoke(api_.get_all_patrons))])
-# print(asyncio.run(invoke(api_.get_checkout, 3)).to_dict())
-# print([obj.to_dict() for obj in asyncio.run(invoke(api_.get_all_checkouts))])
-
-size = 5000
 format_flag = True
 
 method_dict = {
@@ -56,6 +47,8 @@ while (command := input()) != "exit":
     is_valid_table = table in method_dict
     is_valid_method = method in method_dict["book"], method_dict["patron"], method_dict["checkout"]
     if is_valid_table and is_valid_method:
+        if method == "generate":
+            arguments[2] = int(arguments[2])
         result = asyncio.run(invoke(method_dict[table][method], *arguments[2:]))
         if method == "get":
             if format_flag:

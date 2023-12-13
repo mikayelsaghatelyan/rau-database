@@ -1,0 +1,51 @@
+Like New
+Good
+Very Good
+Acceptable
+Excellent
+Fair
+Poor
+Worn
+Well-Loved
+Used
+Damaged
+Pristine
+Average
+Mint
+Gently Used
+Slightly Worn
+Well-Maintained
+Refurbished
+Aged
+Dog-Eared
+Scratched
+Stained
+Broken Spine
+Torn Pages
+Faded
+Water-Damaged
+Dusty
+Marked
+Highlighted
+Wrinkled
+Foxed
+Creased
+Unread
+Bent Cover
+Smudged
+Tattered
+Well-Read
+Cracked Binding
+Missing Pages
+Split Spine
+Blemished
+Warped
+Yellowed
+Rough
+Brittle Pages
+Loose Binding
+Roughed Up
+Intact
+Clean
+Circulated
+New

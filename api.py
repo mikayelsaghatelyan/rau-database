@@ -342,3 +342,6 @@ async def generate_checkouts(number: int):
         session_.add(patron)
         session_.commit()
     return f"Checkouts successfully generated. Generated checkouts count: {number}"
+
+
+

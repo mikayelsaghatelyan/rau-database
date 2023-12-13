@@ -1,0 +1,101 @@
+English
+Spanish
+French
+German
+Mandarin Chinese
+Arabic
+Hindi
+Bengali
+Portuguese
+Russian
+Urdu
+Japanese
+Swahili
+Korean
+Italian
+Turkish
+Dutch
+Polish
+Vietnamese
+Thai
+Romanian
+Greek
+Czech
+Hungarian
+Finnish
+Danish
+Norwegian
+Bulgarian
+Slovak
+Malay
+Indonesian
+Filipino (Tagalog)
+Hebrew
+Hausa
+Yoruba
+Igbo
+Zulu
+Sesotho
+Afrikaans
+Farsi (Persian)
+Pashto
+Kurdish
+Somali
+Amharic
+Tigrinya
+Oromo
+Maltese
+Irish (Gaelic)
+Welsh
+Scottish Gaelic
+Maori
+Hawaiian
+Tahitian
+Fijian
+Samoan
+Tongan
+Greenlandic
+Inuktitut
+Cherokee
+Navajo
+Hopi
+Innu-aimun
+Kwak'wala
+Nahuatl
+Quechua
+Guarani
+Aymara
+Mapudungun
+Yup'ik
+Inupiaq
+Chichewa
+Swazi
+Xhosa
+Tswana
+Sotho
+Shona
+Kikuyu
+Kinyarwanda
+Lingala
+Sango
+Tetum
+Bislama
+Tok Pisin
+Pidgin English
+Tokelauan
+Marshallese
+Palauan
+Kiribati
+Nauruan
+Tuvaluan
+Yapese
+Chamorro
+Hiri Motu
+Wolof
+Bambara
+Mossi (Moore)
+Kanuri
+Hausa
+Fulfulde
+Ibibio
+Efik
