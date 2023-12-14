@@ -10,6 +10,8 @@ import json
 
 app = FastAPI()
 
+console_flag = False
+
 
 # book CRUD
 @app.post("/create_book", tags=["book"])
@@ -18,15 +20,13 @@ async def create_book(title_: str = "",
                       category_: str = "",
                       publisher_: str = "",
                       author_name_: str = "",
-                      author_surname_: str = "",
-                      quantity_: int = 1):
+                      author_surname_: str = ""):
     book = models_.Book(title=title_,
                         isbn=isbn_,
                         category=category_,
                         publisher=publisher_,
                         author_name=author_name_,
-                        author_surname=author_surname_,
-                        quantity=quantity_)
+                        author_surname=author_surname_)
     session_.add(book)
     session_.commit()
     return f"Book successfully created. BookID: {book.book_id}, Title: {book.title}."
@@ -36,8 +36,11 @@ async def create_book(title_: str = "",
 async def get_book(book_id_: int):
     book = session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()
     if book is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Failed to get book by ID. Book not found.")
+        msg = "Failed to get book by ID. Book not found."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
     return book
 
 
@@ -54,11 +57,13 @@ async def update_book(book_id_: int,
                       new_category: str = "",
                       new_publisher: str = "",
                       new_author_name: str = "",
-                      new_author_surname: str = "",
-                      new_quantity: str = None):
+                      new_author_surname: str = ""):
     if (book := session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Failed to update book. No book with such ID.")
+        msg = "Failed to update book. No book with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
     if new_title:
         book.title = new_title
     if new_isbn:
@@ -71,8 +76,6 @@ async def update_book(book_id_: int,
         book.author_name = new_author_name
     if new_author_surname:
         book.author_surname = new_author_surname
-    if new_quantity:
-        book.quantity = new_quantity
     session_.add(book)
     session_.commit()
     return f"Successfully updated book. BookID: {book.book_id}."
@@ -87,13 +90,22 @@ async def delete_book(book_id_: int):
                 session_.commit()
                 return f"Book successfully deleted: BookID: {book.book_id}, Title: {book.title}."
             else:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                    detail=f"ID: {book_id_} Book is checked out and cannot be deleted.")
+                msg = f"ID: {book_id_} Book is checked out and cannot be deleted."
+                if console_flag:
+                    return msg
+                else:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
         else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail=f"ID: {book_id_} Failed to delete book. No book with such ID.")
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Failed to delete book. No books in database.")
+            msg = f"ID: {book_id_} Failed to delete book. No book with such ID."
+            if console_flag:
+                return msg
+            else:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
+    msg = f"Failed to delete book. No books in database."
+    if console_flag:
+        return msg
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 @app.delete("/delete_all_books", tags=["book"])
@@ -105,11 +117,16 @@ async def delete_all_books():
             session_.commit()
             return f"All books successfully deleted. Deleted books count: {deleted_count}."
         else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="Failed to delete all books. Some books "
-                                       "are checked out and cannot be deleted.")
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                        detail="No books found. Nothing to delete.")
+            msg = "Failed to delete all books. Some books are checked out and cannot be deleted."
+            if console_flag:
+                return msg
+            else:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+    msg = "No books found. Nothing to delete."
+    if console_flag:
+        return msg
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 # patron CRUD
@@ -136,8 +153,10 @@ async def create_patron(patron_name_: str = "",
 async def get_patron(patron_id_: int):
     patron = session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first()
     if patron is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Failed to get patron by ID: Patron not found.")
+        msg = "Failed to get patron by ID: Patron not found."
+        if console_flag:
+            return msg
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
     return patron
 
 
@@ -156,8 +175,11 @@ async def update_patron(patron_id_: int,
                         new_address: str = "",
                         new_departure: bool = False):
     if (patron := session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first()) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Failed to update patron. No patron with such ID.")
+        msg = "Failed to update patron. No patron with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
     if new_patron_name:
         patron.patron_name = new_patron_name
     if new_patron_surname:
@@ -178,19 +200,28 @@ async def update_patron(patron_id_: int,
 @app.delete("/delete_patron/{patron_id}", tags=["patron"])
 async def delete_patron(patron_id_: int):
     if session_.query(models_.Patron).count() == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Failed to delete patron. No patrons in database.")
+        msg = f"Failed to delete patron. No patrons in database."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
     if (patron := session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first()) is not None:
         if session_.query(models_.Checkout).filter(models_.Checkout.patron_id == patron_id_).first() is None:
             session_.delete(patron)
             session_.commit()
             return f"Patron successfully deleted: {patron.book_id} - {patron.title}."
         else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=f"ID: {patron_id_} Patron checked out book(s) and cannot be deleted.")
+            msg = f"ID: {patron_id_} Patron checked out book(s) and cannot be deleted."
+            if console_flag:
+                return msg
+            else:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"ID: {patron_id_} Failed to delete patron. No patron with such ID.")
+        msg = f"ID: {patron_id_} Failed to delete patron. No patron with such ID."
+        if console_flag:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
+        else:
+            return msg
 
 
 @app.delete("/delete_all_patrons", tags=["patron"])
@@ -202,11 +233,16 @@ async def delete_all_patrons():
             session_.commit()
             return f"All patrons successfully deleted. Deleted patrons count: {deleted_count}."
         else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="Failed to delete all patrons. Some patrons "
-                                       "checked out books and cannot be deleted.")
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                        detail="No patrons found. Nothing to delete.")
+            msg = "Failed to delete all patrons. Some patrons checked out books and cannot be deleted."
+            if console_flag:
+                return msg
+            else:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+    msg = "No patrons found. Nothing to delete."
+    if console_flag:
+        return msg
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 # checkout methods
@@ -230,19 +266,28 @@ async def create_checkout(book_id_: int,
             return (f"Checkout successfully created. CheckoutID:{checkout.checkout_id} - "
                     f"PatronID:{checkout.patron_id} checked out BookID:{checkout.book_id}.")
         else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail="Failed to create checkout. No patron with such ID.")
+            msg = "Failed to create checkout. No patron with such ID."
+            if console_flag:
+                return msg
+            else:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Failed to create checkout. No book with such ID.")
+        msg = "Failed to create checkout. No book with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 @app.get("/get_checkout/{checkout_id}", tags=["checkout"])
 async def get_checkout(checkout_id_: int):
     checkout = session_.query(models_.Checkout).filter(models_.Checkout.checkout_id == checkout_id_).first()
     if checkout is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Failed to get checkout by ID: Checkout not found.")
+        msg = "Failed to get checkout by ID: Checkout not found."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
     return checkout
 
 
@@ -261,8 +306,11 @@ async def update_checkout(checkout_id_: int,
                           new_return_date_actual: datetime = None):
     if (checkout := session_.query(models_.Checkout).filter(
             models_.Checkout.checkout_id == checkout_id_).first()) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Failed to update checkout. No checkout with such ID.")
+        msg = "Failed to update checkout. No checkout with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
     if new_book_id:
         checkout.book_id = new_book_id
     if new_patron_id:
@@ -288,11 +336,16 @@ async def delete_checkout(checkout_id_: int):
             return (f"Checkout successfully deleted. CheckoutID:{checkout.checkout_id}: "
                     f"PatronID:{checkout.book_id} checked out BookID:{checkout.title}.")
         else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail=f"ID: {checkout.checkout_id} "
-                                       f"Failed to delete checkout. No checkout with such ID.")
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Failed to delete checkout. No checkouts in database.")
+            msg = f"ID: {checkout.checkout_id} Failed to delete checkout. No checkout with such ID."
+            if console_flag:
+                return msg
+            else:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
+    msg = "Failed to delete checkout. No checkouts in database."
+    if console_flag:
+        return msg
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 @app.delete("/delete_all_checkouts", tags=["checkout"])
@@ -302,8 +355,11 @@ async def delete_all_checkouts():
         session_.query(models_.Checkout).delete()
         session_.commit()
         return f"All checkouts successfully deleted. Deleted checkouts count: {deleted_count}."
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                        detail="No checkouts found. Nothing to delete.")
+    msg = "No checkouts found. Nothing to delete."
+    if console_flag:
+        return msg
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 # Methods for creating lines with random pre-generated values
@@ -315,8 +371,7 @@ async def generate_books(number: int):
                             category=data_.get_random_category(),
                             publisher=data_.get_random_publisher(),
                             author_name=data_.get_random_name(),
-                            author_surname=data_.get_random_surname(),
-                            quantity=data_.get_random_quantity())
+                            author_surname=data_.get_random_surname())
         session_.add(book)
         session_.commit()
     return f"Books successfully generated. Generated books count: {number}"
@@ -354,68 +409,87 @@ async def generate_checkouts(number: int):
 # Methods for inserting and reading JSON column (misc_data) values of the tables
 @app.post("/insert_json_book", tags=["book"])
 async def insert_json_data_book(book_id_: int, json_data: dict):
-    book = session_.query(models_.Book).filter(models_.Book.book_id_ == book_id_).first()
+    book = session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()
     if book is not None:
         book.misc_data = json_data
         session_.add(book)
         session_.commit()
-        return f"Book miscellaneous data successfully inserted. BookID: {book.book_id}, Title: {book.title}."
+        return (f"Book miscellaneous data successfully inserted. "
+                f"BookID: {book.book_id}, Title: {book.title}.")
     else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                             detail="Failed to insert miscellaneous data into book. No book with such ID.")
+        msg = "Failed to insert miscellaneous data for book. No book with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 @app.get("/get_json_book/{book_id}", tags=["book"])
 async def get_json_data_book(book_id_: int):
-    book = session_.query(models_.Book).filter(models_.Book.book_id_ == book_id_).first()
+    book = session_.query(models_.Book).filter(models_.Book.book_id == book_id_).first()
     if book is not None:
         return book.misc_data
     else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                             detail="Failed to get miscellaneous data into book. No book with such ID.")
+        msg = "Failed to get miscellaneous data for book. No book with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 @app.post("/insert_json_patron", tags=["patron"])
 async def insert_json_data_patron(patron_id_: int, json_data: dict):
-    patron = session_.query(models_.Patron).filter(models_.Patron.patron_id_ == patron_id_).first()
+    patron = session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first()
     if patron is not None:
         patron.misc_data = json_data
         session_.add(patron)
         session_.commit()
-        return f"patron miscellaneous data successfully inserted. patronID: {patron.patron_id}, Title: {patron.title}."
+        return f"Patron miscellaneous data successfully inserted. PatronID: {patron.patron_id}."
     else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                             detail="Failed to insert miscellaneous data into patron. No patron with such ID.")
+        msg = "Failed to insert miscellaneous data for patron. No patron with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 @app.get("/get_json_patron/{patron_id}", tags=["patron"])
 async def get_json_data_patron(patron_id_: int):
-    patron = session_.query(models_.Patron).filter(models_.Patron.patron_id_ == patron_id_).first()
+    patron = session_.query(models_.Patron).filter(models_.Patron.patron_id == patron_id_).first()
     if patron is not None:
         return patron.misc_data
     else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                             detail="Failed to get miscellaneous data into patron. No patron with such ID.")
+        msg = "Failed to get miscellaneous data for patron. No patron with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 @app.post("/insert_json_checkout", tags=["checkout"])
 async def insert_json_data_checkout(checkout_id_: int, json_data: dict):
-    checkout = session_.query(models_.Checkout).filter(models_.Checkout.checkout_id_ == checkout_id_).first()
+    checkout = session_.query(models_.Checkout).filter(models_.Checkout.checkout_id == checkout_id_).first()
     if checkout is not None:
         checkout.misc_data = json_data
         session_.add(checkout)
         session_.commit()
-        return f"checkout miscellaneous data successfully inserted. checkoutID: {checkout.checkout_id}, Title: {checkout.title}."
+        return f"Checkout miscellaneous data successfully inserted. CheckoutID: {checkout.checkout_id}."
     else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                             detail="Failed to insert miscellaneous data into checkout. No checkout with such ID.")
+        msg = "Failed to insert miscellaneous data for checkout. No checkout with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
 @app.get("/get_json_checkout/{checkout_id}", tags=["checkout"])
 async def get_json_data_checkout(checkout_id_: int):
-    checkout = session_.query(models_.Checkout).filter(models_.Checkout.checkout_id_ == checkout_id_).first()
+    checkout = session_.query(models_.Checkout).filter(models_.Checkout.checkout_id == checkout_id_).first()
     if checkout is not None:
         return checkout.misc_data
     else:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                             detail="Failed to get miscellaneous data into checkout. No checkout with such ID.")
+        msg = "Failed to get miscellaneous data for checkout. No checkout with such ID."
+        if console_flag:
+            return msg
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)

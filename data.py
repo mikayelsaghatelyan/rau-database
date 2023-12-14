@@ -1,5 +1,7 @@
 import os
 import random
+import datetime
+from datetime import datetime, timedelta
 
 
 def read_data(file_name):
@@ -75,6 +77,36 @@ def get_random_fee():
     return random.randint(1, 10) * 10
 
 
+def get_random_publish_date():
+    start_date = "01-01-1600"
+    end_date = "01-01-2023"
+    start_datetime = datetime.strptime(start_date, "%m-%d-%Y")
+    end_datetime = datetime.strptime(end_date, "%m-%d-%Y")
+    date_range = (end_datetime - start_datetime).days
+    random_days = random.randint(0, date_range)
+    result_date = start_datetime + timedelta(days=random_days)
+    return result_date.strftime("%Y-%m-%d")
+
+
+def get_random_join_date():
+    start_date = "01-01-1987"
+    end_date = "01-01-2023"
+    start_datetime = datetime.strptime(start_date, "%m-%d-%Y")
+    end_datetime = datetime.strptime(end_date, "%m-%d-%Y")
+    date_range = (end_datetime - start_datetime).days
+    random_days = random.randint(0, date_range)
+    result_date = start_datetime + timedelta(days=random_days)
+    return result_date.strftime("%Y-%m-%d")
+
+
+def get_random_edition():
+    return random.choice(data["editions"])
+
+
+def get_random_pages():
+    return random.randint(100, 999)
+
+
 def get_random_passport():
     letters = random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=2)
     numbers = ''.join(random.choices('0123456789', k=8))
@@ -82,7 +114,7 @@ def get_random_passport():
     return passport_code
 
 
-file_names = ["categories.txt", "publishers.txt", "names.txt", "streets.txt", "languages.txt"
-              "surnames.txt", "titles.txt", "towns.txt", "states.txt", "conditions.txt",]
+file_names = ["categories.txt", "publishers.txt", "names.txt", "streets.txt", "languages.txt",
+              "surnames.txt", "titles.txt", "towns.txt", "states.txt", "conditions.txt", "editions.txt"]
 
 data = {file_name[:-4]: read_data(file_name) for file_name in file_names}
