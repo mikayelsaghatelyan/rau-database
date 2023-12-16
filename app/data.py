@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 
 def read_data(file_name):
-    with open(os.path.join("tables_data", file_name), "r") as file:
+    with open(os.path.join("../table_data", file_name), "r") as file:
         return file.read().strip().split('\n')
 
 
@@ -75,6 +75,18 @@ def get_random_renewal_amount():
 
 def get_random_fee():
     return random.randint(1, 10) * 10
+
+
+def get_random_checkout_datetime():
+    start_datetime = datetime(1987, 1, 1)
+    end_datetime = datetime(2024,1,1)
+    time_difference = end_datetime - start_datetime
+    random_seconds = random.randint(0, int(time_difference.total_seconds()))
+    return start_datetime + timedelta(seconds=random_seconds)
+
+
+def get_random_return_datetime(checkout_datetime: datetime):
+    return checkout_datetime + timedelta(weeks=random.randint(1, 10))
 
 
 def get_random_publish_date():

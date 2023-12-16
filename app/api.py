@@ -1,12 +1,11 @@
-from fastapi import FastAPI, HTTPException, Request, Query
+from fastapi import FastAPI, HTTPException
 from starlette import status
+from sqlalchemy import func
 from session import session as session_
 from datetime import datetime, timedelta
 import models as models_
 import data as data_
 import random
-import asyncio
-import json
 
 app = FastAPI()
 
@@ -398,9 +397,12 @@ async def generate_checkouts(number: int):
     for _ in range(number):
         patron = models_.Checkout(book_id=random.choice(book_ids),
                                   patron_id=random.choice(patron_ids),
-                                  checkout_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                  return_date_expected=(datetime.now() + timedelta(weeks=3)).strftime("%Y-%m-%d"),
-                                  return_date_actual=(datetime.now() + timedelta(weeks=2)).strftime("%Y-%m-%d"))
+                                  checkout_date=(checkout_datetime := data_.get_random_checkout_datetime())
+                                  .strftime("%Y-%m-%d %H:%M:%S"),
+                                  return_date_expected=(data_.get_random_return_datetime(checkout_datetime))
+                                  .strftime("%Y-%m-%d"),
+                                  return_date_actual=(data_.get_random_return_datetime(checkout_datetime))
+                                  .strftime("%Y-%m-%d"))
         session_.add(patron)
         session_.commit()
     return f"Checkouts successfully generated. Generated checkouts count: {number}"
@@ -493,3 +495,80 @@ async def get_json_data_checkout(checkout_id_: int):
             return msg
         else:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
+
+
+# Queries - can be sorted by "sort_column" argument
+
+
+# SELECT WHERE - Select all checked out books of specific publisher and category, sort them by sort_column
+@app.get("/select_where", tags=["queries"])
+async def get_books_select_where(category: str, publisher: str, sort_column: str):
+    query = session_.query(models_.Book).filter(models_.Book.category == category,
+                                                models_.Book.publisher == publisher,
+                                                models_.Book.book_id.in_(session_.query(models_.Checkout.book_id)))
+    books = query.order_by(sort_column).all()
+    return [book.to_dict() for book in books]
+
+
+# JOIN - Select book title, author and patron who checked it out, as well as date of checkout, sort them by sort_column
+@app.get("/join", tags=["queries"])
+async def get_books_join(sort_column: str):
+    query = (session_.query(models_.Book.title,
+                            models_.Book.author_name,
+                            models_.Book.author_surname,
+                            models_.Patron.patron_name,
+                            models_.Patron.patron_surname,
+                            models_.Checkout.checkout_date,
+                            models_.Checkout.return_date_expected)
+             .join(models_.Checkout, models_.Book.book_id == models_.Checkout.book_id)
+             .join(models_.Patron, models_.Checkout.patron_id == models_.Patron.patron_id))
+    books = query.order_by(sort_column).all()
+    return [{"title": book.title, "author_name": book.author_name, "author_surname": book.author_surname,
+             "patron_name": book.patron_name, "patron_surname": book.patron_surname,
+             "checkout_date": book.checkout_date.strftime("%Y-%m-%d %H:%M:%S")} for book in books]
+
+
+# UPDATE - set new_category for checked out books with specific publisher, book author surname should start with
+#          specific letter and the patrons who checked out the books must all be departed or not departed
+#          sort the results by sort_column
+@app.post("/update", tags=["queries"])
+async def update_books_category(new_category: str, publisher: str, letter: str, departure: bool, sort_column: str):
+    try:
+        subquery = session_.query(models_.Book.book_id) \
+            .join(models_.Checkout, models_.Book.book_id == models_.Checkout.book_id) \
+            .join(models_.Patron, models_.Checkout.patron_id == models_.Patron.patron_id) \
+            .filter(models_.Book.publisher == publisher,
+                    models_.Book.author_surname.like(f'{letter}%'),
+                    models_.Patron.departure == departure) \
+            .subquery()
+        session_.query(models_.Book) \
+            .filter(models_.Book.book_id.in_(subquery)) \
+            .update({'category': new_category}, synchronize_session='fetch') \
+            .order_by(sort_column)
+        session_.commit()
+        return f"Successfully updated books on specified query."
+    except Exception as e:
+        session_.rollback()
+        if console_flag:
+            return str(e)
+        else:
+            raise HTTPException(status_code=500, detail=str(e))
+
+
+# GROUP - group all books by number of books of each category for each publisher,
+#         sort them first by publisher, then by category
+@app.get("/group", tags=["books"])
+async def get_books_group():
+    query = session_.query(
+        models_.Book.publisher,
+        models_.Book.category,
+        func.count().label("total_books")
+    ).group_by(
+        models_.Book.publisher,
+        models_.Book.category
+    ).order_by(
+        models_.Book.publisher,
+        models_.Book.category)
+    results = query.all()
+    return [{"publisher": result.publisher, "category": result.category,
+             "total_books": result.total_books} for result in results]
